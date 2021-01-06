@@ -1,0 +1,6 @@
+/target/
+/src/test/resources/panoramas/
+/src/test/resources/photos/
+/src/test/resources/videos/
+/src/test/resources/*.jpg
+/src/test/resources/*.JPG

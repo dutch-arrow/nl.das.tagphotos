@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<!-- Stop output INFO at start -->
+	<statusListener
+		class="ch.qos.logback.core.status.NopStatusListener" />
+	<!-- Stop org.glassfish.jersey warnings -->
+	<contextListener
+		class="ch.qos.logback.classic.jul.LevelChangePropagator">
+		<resetJUL>true</resetJUL>
+	</contextListener>
+
+	<appender name="STDOUT"
+		class="ch.qos.logback.core.ConsoleAppender">
+		<layout class="ch.qos.logback.classic.PatternLayout">
+			<Pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+			</Pattern>
+		</layout>
+	</appender>
+	
+	<appender name="SIZE_AND_FIX_WINDOW_BASED_FILE"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>/usr/local/logs/albumserver.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+			<fileNamePattern>/usr/local/logs/albumserver-%i.log</fileNamePattern>
+			<minIndex>1</minIndex>
+			<maxIndex>10</maxIndex>
+		</rollingPolicy>
+
+		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			<maxFileSize>1MB</maxFileSize>
+		</triggeringPolicy>
+
+		<encoder>
+			<pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{35} - %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	<!-- Set root log level to ERROR -->
+	<root level="ERROR">
+		<appender-ref ref="SIZE_AND_FIX_WINDOW_BASED_FILE" />
+		<appender-ref ref="STDOUT" />
+	</root>
+	<logger name="ch.qos.logback" level="ERROR" />
+
+	<!-- enable logging for project -->
+	<logger name="nl.das.tagphotos" level="DEBUG" />
+
+</configuration>
