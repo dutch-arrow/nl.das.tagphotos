@@ -49,7 +49,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.ProgressMonitor;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -106,6 +108,8 @@ public class TagPhotos {
 	private JComboBox<String> cmbYear;
 	private JLabel lblChosenFolder;
 	private JLabel lblFile;
+	private ProgressMonitor pgmon;
+	private ImportTask task;
 
 	/**
 	 * Launch the application.
@@ -190,11 +194,14 @@ public class TagPhotos {
 		this.btnImport = new JButton("Import folder");
 		this.btnImport.setEnabled(false);
 		this.btnImport.addActionListener(e -> {
-			ImageImporter imp = new ImageImporter(conf, database);
 			if (this.photoFiles != null) {
-				for (Path path : this.photoFiles) {
-					imp.importImage(path.toString());
-				}
+				this.pgmon = new ProgressMonitor(this.frmTagAPhoto, "Importing ....",
+						"Starting...", 0, this.photoFiles.size());
+				this.pgmon.setMillisToDecideToPopup(0);
+				this.pgmon.setMillisToPopup(0);
+				this.pgmon.setProgress(0);
+				this.task = new ImportTask();
+				this.task.start();
 			}
 		});
 		this.btnImport.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -470,6 +477,21 @@ public class TagPhotos {
 		this.txtTags.setColumns(90);
 	}
 
+	private class ImportTask extends Thread {
+		@Override
+		public void run() {
+			ImageImporter imp = new ImageImporter(conf, database);
+			for (int i = 0; i < TagPhotos.this.photoFiles.size(); i++) {
+				final int progress = i;
+				imp.importImage(TagPhotos.this.photoFiles.get(progress).toString());
+				SwingUtilities.invokeLater(() -> {
+					TagPhotos.this.pgmon.setProgress(progress + 1);
+					TagPhotos.this.pgmon.setNote(TagPhotos.this.photoFiles.get(progress).getFileName().toString());
+				});
+			}
+		}
+	}
+
 	public void close() {
 		mongoClient.close();
 	}
@@ -479,11 +501,10 @@ public class TagPhotos {
 	}
 
 	/**
-	 * Support function: get the value of the given directory and tag from the given
-	 * Metadata object.
+	 * Support function: get the s from the given Metadata object.
 	 * 
-	 * @param dirName
-	 * @return the value as a string or NULL if not found
+	 * @param iptc the IPTC block
+	 * @return the value as a string or an empty string if not found
 	 */
 	private String getTags(IPTC iptc) {
 		String tags = "";
@@ -498,6 +519,13 @@ public class TagPhotos {
 		return tags.isEmpty() ? "" : tags.substring(0, tags.length() - 1);
 	}
 
+	/**
+	 * Change or add the tags in the photo file.
+	 * 
+	 * @param jpegFile the photo file
+	 * @param keywords the keyword to store
+	 * @throws IOException
+	 */
 	private void changeKeywords(String jpegFile, String keywords) throws IOException {
 		String dst1 = Files.createTempFile("", "jpg").toString();
 		// get metadata
@@ -529,6 +557,9 @@ public class TagPhotos {
 		Files.deleteIfExists(Paths.get(dst1));
 	}
 
+	/**
+	 * Fill the combobox with all years that have photos.
+	 */
 	private void fillCmbYear() {
 		MongoCollection<TagIndex> colTags = database.getCollection("tags", TagIndex.class);
 		MongoCursor<TagIndex> cursor = colTags.find(regex("tag", "[0-9]{4}")).cursor();
@@ -538,6 +569,12 @@ public class TagPhotos {
 		cursor.close();
 	}
 
+	/**
+	 * Collect all photo of a give year from database.
+	 * 
+	 * @param year
+	 * @return
+	 */
 	private List<Photo> getAllPhotosOfYear(String year) {
 		List<Photo> photos = new ArrayList<>();
 		MongoCollection<TagIndex> colTags = database.getCollection("tags", TagIndex.class);
@@ -555,7 +592,7 @@ public class TagPhotos {
 	/**
 	 * Update the image in the database.
 	 * 
-	 * @param img
+	 * @param photo
 	 */
 	private void update(Photo photo) {
 		log.debug("[update()] Photo " + photo.getId());
@@ -609,6 +646,9 @@ public class TagPhotos {
 		}
 	}
 
+	/**
+	 * Private class ImagePanel. This JPanel extension will display a photo.
+	 */
 	class ImagePanel extends JPanel {
 
 		private static final long serialVersionUID = 1L;

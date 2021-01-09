@@ -87,7 +87,7 @@ public class ImageImporter {
 			IPTC iptc = (IPTC) Metadata.readMetadata(path).get(MetadataType.IPTC);
 			Exif exif = (Exif) Metadata.readMetadata(path).get(MetadataType.EXIF);
 			String tags = getKeywords(iptc);
-			log.debug("Importing photo '" + name + "' with id " + id + "and tags '" + tags);
+			log.debug("Importing photo '" + name + "' with id " + id + " and tags '" + tags + "'");
 			String year = tags.split(";")[0];
 			ImagePlus org = IJ.openImage(path);
 			// Check if all folders are there. If not create them
@@ -128,6 +128,12 @@ public class ImageImporter {
 		}
 	}
 
+	/**
+	 * Retrieve the list of keywords from an IPTC metadata block.
+	 * 
+	 * @param meta the IPTC metadata block
+	 * @return
+	 */
 	protected String getKeywords(IPTC meta) {
 		String tags = "";
 		Map<IPTCTag, List<IPTCDataSet>> dataSets = meta.getDataSets();
@@ -141,12 +147,24 @@ public class ImageImporter {
 		return tags.isEmpty() ? "" : tags.substring(0, tags.length() - 1);
 	}
 
+	/**
+	 * Retrieve the width and height from the EXIF metadata block.
+	 * 
+	 * @param meta the EXIF metadata block
+	 * @return
+	 */
 	protected Dimension getWidthAndHeight(Exif meta) {
 		String w = meta.getAsString(ExifTag.EXIF_IMAGE_WIDTH).replace("[", "").replace("]", "");
 		String h = meta.getAsString(ExifTag.EXIF_IMAGE_HEIGHT).replace("[", "").replace("]", "");
 		return new Dimension(Integer.parseInt(w), Integer.parseInt(h));
 	}
 
+	/**
+	 * Retrieve the Creation Date of a photo from the given IPTC metadata block
+	 * 
+	 * @param meta the IPTC metadata block
+	 * @return
+	 */
 	protected long getCreationDate(IPTC meta) {
 		Map<IPTCTag, List<IPTCDataSet>> dataSets = meta.getDataSets();
 		String dt = null;
@@ -225,6 +243,13 @@ public class ImageImporter {
 		}
 	}
 
+	/**
+	 * Find a tag in the database.
+	 * 
+	 * @param tag  the tag to find
+	 * @param tcol the MongoCollection<TagIndex> to be searched.
+	 * @return
+	 */
 	public TagIndex findTag(String tag, MongoCollection<TagIndex> tcol) {
 		MongoCursor<TagIndex> cursor = tcol.find(eq("tag", tag)).cursor();
 		if (cursor.hasNext()) {
@@ -237,7 +262,7 @@ public class ImageImporter {
 	/**
 	 * Find id of image with given name and remove it from the database.
 	 * 
-	 * @param name
+	 * @param name the original filename of the photo
 	 * @return
 	 */
 	public String findAndRemove(String name) {
